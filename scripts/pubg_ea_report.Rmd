@@ -175,6 +175,7 @@ For each class, the value distribution of the player statistics are shown as his
 #          vehicleDestroys,
 #          heals,revives,assists,boosts,winPoints,score)
 dataPlayerS<-read.csv(file=file.path("working_data","dataPlayerS.csv"))
+
 ```
 
 

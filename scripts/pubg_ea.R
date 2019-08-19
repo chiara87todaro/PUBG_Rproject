@@ -249,7 +249,7 @@ dataPlayerS<-dataSample %>%
          heals,revives,assists,boosts,winPoints,score)
 
 
-write.csv(dataMatch,file=file.path("working_data","dataPlayerS.csv"))
+write.csv(dataPlayerS,file=file.path("working_data","dataPlayerS.csv"))
 
 (table(dataPlayerS$totKills)/length(dataPlayerS$totKills))*100
 #~60% of players has a total of 0 kills
