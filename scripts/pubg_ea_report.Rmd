@@ -50,9 +50,8 @@ rm(dataTrain)
 ```
 
 The data set, available [here](https://www.kaggle.com/c/pubg-finish-placement-prediction/data), 
-<!-- consists of `r ncol(dataTrain)` statistics collected for `r nrow(dataTrain)` players weighting  -->
 consists of `r dimData[2]` statistics collected for `r dimData[1]` players weighting
-`r `. The statistics are:
+`r sizeData`. The statistics are:
 
 1. **Id**: player’s Id
 2. **assists**: number of enemy this player damaged that were killed by teammates
@@ -95,10 +94,6 @@ Since the big number of statistics and observations, summary plots for match and
 
 
 ``` {r data_match}
-cutpoints<-c(0,0.2,0.9,0.999999999,1.1);
-lab=c("tail","heart","head","top") 
-scores<-cut(dataTrain$winPlacePerc,breaks=cutpoints,labels =lab,right = F ) #[a,b)
-
 # dataMatch<-dataTrain %>% mutate(score=scores=="top") %>% add_count(matchId)  %>% 
 #    mutate(nPlayers=n) %>% select(-n) %>%  group_by(matchId) %>% summarise(type=unique(matchType,matchId),duration=mean(matchDuration),nGroups=mean(numGroups), 
 #                                   maxPlace=mean(maxPlace),nPlayers=unique(nPlayers,matchId),nWinners=sum(score))
@@ -189,12 +184,12 @@ playerVariables<-c("DBNOs","damageDealt","weaponsAcquired","killPoints","killPla
 
 g_glob<-list()
 
-for(i in c(1,2,3,4,5)){#seq_along(playerVariables)
-  rangeVar<-range(dataPlayerS[,playerVariables[i]])
-  g_glob[[i]]<-ggplot(data = dataPlayerS,aes(x=dataPlayerS[,playerVariables[i]],fill=score,stat(ncount))) +
-            geom_histogram(binwidth=max(rangeVar)/10,position = "dodge") +coord_cartesian(xlim = rangeVar)+
-             xlab(playerVariables[i])+ ylab("% of max")
-}
+# for(i in c(1,2,3,4,5)){#seq_along(playerVariables)
+#   rangeVar<-range(dataPlayerS[,playerVariables[i]])
+#   g_glob[[i]]<-ggplot(data = dataPlayerS,aes(x=dataPlayerS[,playerVariables[i]],fill=score,stat(ncount))) +
+#             geom_histogram(binwidth=max(rangeVar)/10,position = "dodge") +coord_cartesian(xlim = rangeVar)+
+#              xlab(playerVariables[i])+ ylab("% of max")
+# }
 
 # fig2<-ggarrange(g_glob[[1]],g_glob[[2]],g_glob[[3]],g_glob[[4]],g_glob[[5]],
 #              g_glob[[6]],g_glob[[7]],g_glob[[8]],g_glob[[9]],g_glob[[10]],
