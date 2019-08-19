@@ -5,17 +5,18 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE,cache = TRUE,warning = FALSE)
+knitr::opts_chunk$set(echo = FALSE,cache = TRUE,warning = F)
 
-mainPath<-file.path(Sys.getenv("R_USER"), "PUBG_R", "PUBG_R", "scripts")
+# mainPath<-file.path(Sys.getenv("R_USER"), "PUBG_Rproject", "scripts")
+mainPath<-file.path(Sys.getenv("HOME"),"kaggle","PUBG_Rproject", "scripts")
 setwd(mainPath)#"~/kaggle/PUBG_R/PUBG_R/"
 
 
 dataDir<-file.path(getwd(), "data");
 
 # install external libraries
-library(dplyr);library(ggplot2);library(reshape2);library(ggpubr)#library(gridExtra)
-library(data.table)
+library(dplyr);library(ggplot2);library(reshape2);#library(ggpubr)#library(gridExtra)
+# library(data.table)
 ```
 
 ### Synopsis
@@ -34,15 +35,24 @@ During the match, players can find objects such as weapons, vehicles, and medica
 other players (including team members), to drive away from the dangerous areas or go right in to the middle of it.
 
 ```{r load data}
-dataTrainSam<-read.table(file.path(dataDir,"train_V2.csv"),stringsAsFactors =F,nrows=10,sep = ",",header =T)
-dataTrain<-read.table(file.path(dataDir,"train_V2.csv"),sep = ",",header =T,stringsAsFactors =F, 
-                      col.names = names(dataTrainSam),colClasses = sapply(dataTrainSam,class))
+dataTrainSam<-read.csv(file.path(dataDir,"train_V2.csv"),stringsAsFactors =F,nrows=10)
+dataTrain<-read.csv(file.path(dataDir,"train_V2.csv"),stringsAsFactors =F, 
+                    col.names = names(dataTrainSam),colClasses = sapply(dataTrainSam,class))
 rm(dataTrainSam)
+dimData<-dim(dataTrain)
+sizeData<-format(object.size(dataTrain),units = "Gb")
+
+cutpoints<-c(0,0.2,0.9,0.999999999,1.01);
+lab=c("tail","heart","head","top") 
+scores<-cut(dataTrain$winPlacePerc,breaks=cutpoints,labels =lab,right = F ) #[a,b)
+
+rm(dataTrain)
 ```
 
 The data set, available [here](https://www.kaggle.com/c/pubg-finish-placement-prediction/data), 
-consists of `r ncol(dataTrain)` statistics collected for `r nrow(dataTrain)` players weighting 
-`r format(object.size(dataTrain),units = "Gb")`. The statistics are:
+<!-- consists of `r ncol(dataTrain)` statistics collected for `r nrow(dataTrain)` players weighting  -->
+consists of `r dimData[2]` statistics collected for `r dimData[1]` players weighting
+`r `. The statistics are:
 
 1. **Id**: player’s Id
 2. **assists**: number of enemy this player damaged that were killed by teammates
@@ -52,7 +62,8 @@ consists of `r ncol(dataTrain)` statistics collected for `r nrow(dataTrain)` pla
 6. **damageDealt**: total damage dealt. Note: Self inflicted damage is subtracted
 7. **DBNOs**: number of enemy knocked
 8. **killPlace**: ranking in match of number of enemy killed
-9. **killPoints**: kills-based external ranking of player ["0" should be treated as a “None” for *rankPoints* equal to -1]
+9. **killPoints**: kills-based external ranking of player ["0" should be treated as a “None” 
+for *rankPoints* equal to -1]
 10. **killStreaks**: max number of enemy killed in a short amount of time
 11. **kills**: number of enemy killed
 12. **headshotKills**: number of enemy killed with headshots
@@ -64,8 +75,10 @@ consists of `r ncol(dataTrain)` statistics collected for `r nrow(dataTrain)` pla
 18. **vehicleDestroys**: number of vehicles destroyed
 19. **walkDistance**: total distance traveled on foot measured in meters
 20. **weaponsAcquired**: number of weapons picked up
-21. **winPoints**: win-based external ranking of playe ["0" should be treated as a “None” for *rankPoints* equal to -1]
-22. **winPlacePerc**: percentile winning placement, where 1 corresponds to 1st place. It is calculated off of *maxPlace* [TARGET]
+21. **winPoints**: win-based external ranking of playe ["0" should be treated as a “None” for
+*rankPoints* equal to -1]
+22. **winPlacePerc**: percentile winning placement, where 1 corresponds to 1st place. 
+It is calculated off of *maxPlace* [TARGET]
 23. **rankPoints**: Elo-like ranking of player, inconsistent and is being deprecated in the API’s next version
 24. **groupId**: ID group within a match. In different matches the same group of players will have a different IDs
 25. **matchDuration**: duration of match in seconds
@@ -86,10 +99,11 @@ cutpoints<-c(0,0.2,0.9,0.999999999,1.1);
 lab=c("tail","heart","head","top") 
 scores<-cut(dataTrain$winPlacePerc,breaks=cutpoints,labels =lab,right = F ) #[a,b)
 
-dataMatch<-dataTrain %>% mutate(score=scores=="top") %>% add_count(matchId,name = "nPlayers") %>% 
-  group_by(matchId) %>% summarise(type=unique(matchType,matchId),duration=mean(matchDuration),nGroups=mean(numGroups), 
-                                  maxPlace=mean(maxPlace),nPlayers=unique(nPlayers,matchId),nWinners=sum(score))
+# dataMatch<-dataTrain %>% mutate(score=scores=="top") %>% add_count(matchId)  %>% 
+#    mutate(nPlayers=n) %>% select(-n) %>%  group_by(matchId) %>% summarise(type=unique(matchType,matchId),duration=mean(matchDuration),nGroups=mean(numGroups), 
+#                                   maxPlace=mean(maxPlace),nPlayers=unique(nPlayers,matchId),nWinners=sum(score))
 
+dataMatch<-read.csv(file=file.path("working_data","dataMatch.csv"))
 summMatch<-dataMatch %>% summarise(AVduration=mean(duration),SDduration=sd(duration),
                                    AVnGroups=mean(nGroups), SDnGroups=sd(nGroups),
                                   AVmaxPlace=mean(maxPlace),SDmaxPlace=sd(maxPlace),
@@ -105,25 +119,26 @@ the worst placement ranked in the match, and the number of winners in the match.
 Although the match number is not even amongs types, as shown in the table below, notice that there is a high variability in 
 the statistic distributions for each match type [see Figure 1]. For this reason the match type is disregarded in the next analysis.
 
- ```{r n_types,tidy=T}
+```{r n_types,tidy=T}
  NMtype<-table(dataMatch$type)
  print(NMtype)
- ```
+```
 
 ```{r data_match_plot1}
-gm1<-ggplot(data=dataMatch,aes(y=duration,fill=type))+geom_boxplot()+ylab("duration[s]")+ 
+gm1<-ggplot(data=dataMatch,aes(y=duration,fill=type))+geom_boxplot()+ylab("duration[s]")+
   theme(axis.title.x=element_blank(), axis.text.x=element_blank(),axis.ticks.x=element_blank())
-gm2<-ggplot(data=dataMatch,aes(y=nPlayers,fill=type))+geom_boxplot()+ylab("N players")+ 
+gm2<-ggplot(data=dataMatch,aes(y=nPlayers,fill=type))+geom_boxplot()+ylab("N players")+
   theme(axis.title.x=element_blank(), axis.text.x=element_blank(),axis.ticks.x=element_blank())
-gm3<-ggplot(data=dataMatch,aes(y=nGroups,fill=type))+geom_boxplot()+ylab("N groups")+ 
+gm3<-ggplot(data=dataMatch,aes(y=nGroups,fill=type))+geom_boxplot()+ylab("N groups")+
   theme(axis.title.x=element_blank(), axis.text.x=element_blank(),axis.ticks.x=element_blank())
-gm4<-ggplot(data=dataMatch,aes(y=maxPlace,fill=type))+geom_boxplot()+ylab("worst placement")+ 
+gm4<-ggplot(data=dataMatch,aes(y=maxPlace,fill=type))+geom_boxplot()+ylab("worst placement")+
   theme(axis.title.x=element_blank(), axis.text.x=element_blank(),axis.ticks.x=element_blank())
-gm5<-ggplot(data=dataMatch,aes(y=nWinners,fill=type))+geom_boxplot()+ylab("N winners")+ 
+gm5<-ggplot(data=dataMatch,aes(y=nWinners,fill=type))+geom_boxplot()+ylab("N winners")+
   theme(axis.title.x=element_blank(), axis.text.x=element_blank(),axis.ticks.x=element_blank())
 
 fig1<-ggarrange(gm1,gm2,gm3,gm4,gm5,nrow=5,common.legend=TRUE,legend="right")
 annotate_figure(fig1, top = "Match statistics", fig.lab = "Figure 1", fig.lab.pos = "bottom")
+rm(fig1)
 ```
 
 On average, a match lasts `r format(summMatch$AVduration,digits=4)` +/- `r format(summMatch$SDduration,digits=4)` s
@@ -144,9 +159,7 @@ scores between 0 and 0.2 (excluded) are labeld as "tail" (see table below).
 
 
 ```{r score_def1}
-cutpoints<-c(0,0.2,0.9,0.999999999,1.01);
-lab=c("tail","heart","head","top") 
-scores<-cut(dataTrain$winPlacePerc,breaks=cutpoints,labels =lab,right = F ) #[a,b)
+
 dfScore<-data.frame(score=c("[0-0.2)","[0.2-0.9)","[0.9-0.99]","1"),number=as.integer(table(scores)),
                     percentage=format(table(scores)/length(scores),digits=1))
 print(dfScore)
@@ -155,17 +168,18 @@ print(dfScore)
 For each class, the value distribution of the player statistics are shown as histograms in Figure 2. 
 
 ```{r players_stats}
-dataPlayerS<-dataTrain %>% 
-  mutate(DBNOs=DBNOs,damageDealt=damageDealt,weaponsAcquired=weaponsAcquired,vehicleDestroys=vehicleDestroys,
-         killPoints=killPoints,killPlace=killPlace,longestKill=longestKill,
-         totKills=headshotKills+killStreaks+roadKills+kills+teamKills,
-         totDistance=swimDistance+walkDistance+rideDistance,
-         heals=heals,revives=revives,assists=assists,boosts=boosts,
-         winPoints=winPoints,score=scores) %>% 
-  select(Id,groupId,DBNOs,damageDealt,weaponsAcquired,killPoints,killPlace,longestKill,
-         totKills,totDistance,
-         vehicleDestroys,
-         heals,revives,assists,boosts,winPoints,score)
+# dataPlayerS<-dataTrain %>% 
+#   mutate(DBNOs=DBNOs,damageDealt=damageDealt,weaponsAcquired=weaponsAcquired,vehicleDestroys=vehicleDestroys,
+#          killPoints=killPoints,killPlace=killPlace,longestKill=longestKill,
+#          totKills=headshotKills+killStreaks+roadKills+kills+teamKills,
+#          totDistance=swimDistance+walkDistance+rideDistance,
+#          heals=heals,revives=revives,assists=assists,boosts=boosts,
+#          winPoints=winPoints,score=scores) %>% 
+#   select(Id,groupId,DBNOs,damageDealt,weaponsAcquired,killPoints,killPlace,longestKill,
+#          totKills,totDistance,
+#          vehicleDestroys,
+#          heals,revives,assists,boosts,winPoints,score)
+dataPlayerS<-read.csv(file=file.path("working_data","dataPlayerS.csv"))
 ```
 
 
@@ -182,10 +196,10 @@ for(i in c(1,2,3,4,5)){#seq_along(playerVariables)
              xlab(playerVariables[i])+ ylab("% of max")
 }
 
-fig2<-ggarrange(g_glob[[1]],g_glob[[2]],g_glob[[3]],g_glob[[4]],g_glob[[5]],
+# fig2<-ggarrange(g_glob[[1]],g_glob[[2]],g_glob[[3]],g_glob[[4]],g_glob[[5]],
 #              g_glob[[6]],g_glob[[7]],g_glob[[8]],g_glob[[9]],g_glob[[10]],
 #              g_glob[[11]],g_glob[[12]],g_glob[[13]],g_glob[[14]],
-nrow=4,common.legend=TRUE,legend="right")
+# nrow=4,common.legend=TRUE,legend="right")
 # annotate_figure(fig2, top = "Player statistics", fig.lab = "Figure 2", fig.lab.pos = "bottom")
 ```
 

@@ -3,14 +3,17 @@
 
 rm(list = ls())
 
-# mainPath<-file.path(Sys.getenv("HOME"),"kaggle","PUBG_R", "PUBG_R")
-mainPath<-file.path(Sys.getenv("R_USER"), "PUBG_R", "PUBG_R", "scripts")
+mainPath<-file.path(Sys.getenv("HOME"),"kaggle","PUBG_Rproject", "scripts")
+# mainPath<-file.path(Sys.getenv("R_USER"), "PUBG_Rproject", "scripts")
 setwd(mainPath)#"~/kaggle/PUBG_R/PUBG_R/"
 
 if(!file.exists("data")){
   dir.create("data")
 }
 
+if(!file.exists("working_data")){
+   dir.create("working_data")
+}
 dataDir<-file.path(getwd(), "data");
 
 # install external libraries
@@ -32,7 +35,8 @@ if (!file.exists(dataPath)){
 #### load data
 
 dataTrainSam<-read.csv(file.path(dataDir,"train_V2.csv"),stringsAsFactors =F,nrows=10)
-dataTrain<-read.csv(file.path(dataDir,"train_V2.csv"),stringsAsFactors =F, col.names = names(dataTrainSam))
+dataTrain<-read.csv(file.path(dataDir,"train_V2.csv"),stringsAsFactors =F, 
+                    col.names = names(dataTrainSam),colClasses = sapply(dataTrainSam,class))
 
 rm(dataTrainSam)
 # dataTestSam<-read.csv(paste0(dataDir,"test_V2.csv"),stringsAsFactors =F,nrows=10)
@@ -191,8 +195,9 @@ scores<-cut(dataTrain$winPlacePerc,breaks=cutpoints,labels =lab,right = F ) #[a,
 # (Nwinners/length(scores))*100 #2.868765
 
 
-dataMatch<-dataTrain %>% mutate(score=scores=="top") %>% add_count(matchId,name = "nPlayers") %>% 
-  group_by(matchId) %>% summarise(type=unique(matchType,matchId),duration=mean(matchDuration),nGroups=mean(numGroups), 
+dataMatch<-dataTrain %>% mutate(score=scores=="top") %>% add_count(matchId)  %>% mutate(nPlayers=n) %>% 
+   select(-n) %>% group_by(matchId) %>% 
+   summarise(type=unique(matchType,matchId),duration=mean(matchDuration),nGroups=mean(numGroups), 
 # <<<<<<< HEAD
           # rankPoints=mean(rankPoints),winPoints=mean(winPoints),killPlace=mean(killPlace),longestKill=mean(longestKill),
                                   maxPlace=mean(maxPlace),nPlayers=unique(nPlayers,matchId),nWinners=sum(score))
@@ -202,6 +207,7 @@ dataMatch<-dataTrain %>% mutate(score=scores=="top") %>% add_count(matchId,name 
 # >>>>>>> parent of 5a9c7fd... correlation between variable per score
 
 
+write.csv(dataMatch,file=file.path("working_data","dataMatch.csv"))
 
 # checks 
 winningMatches<-dataTrain$matchId[scores=="top"]
@@ -241,6 +247,9 @@ dataPlayerS<-dataSample %>%
          totKills,totDistance,
          vehicleDestroys,
          heals,revives,assists,boosts,winPoints,score)
+
+
+write.csv(dataMatch,file=file.path("working_data","dataPlayerS.csv"))
 
 (table(dataPlayerS$totKills)/length(dataPlayerS$totKills))*100
 #~60% of players has a total of 0 kills
