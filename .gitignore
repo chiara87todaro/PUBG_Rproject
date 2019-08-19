@@ -1,3 +1,6 @@
 /scripts/data/
 /scripts/pubg_ea_report_cache/html/*
 /scripts/pubg_ea_report_files/figure-html/*
+/scripts/fits_250000obs_5vars.RData
+/scripts/fits_220000obs_5vars.RData
+/scripts/fits_10000obs_7vars.RData
