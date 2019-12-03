@@ -5,3 +5,7 @@
 /scripts/fits_220000obs_5vars.RData
 /scripts/fits_10000obs_7vars.RData
 /scripts/working_data/*
+/scripts/pubg_ea_report_cache/*
+/scripts/pubg_ea_report_files/*
+/scripts/old_data/*
+/scripts/rsconnect/*
