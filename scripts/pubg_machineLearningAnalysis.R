@@ -5,44 +5,31 @@
 rm(list = ls())
 
 # mainPath<-file.path(Sys.getenv("HOME"),"kaggle","PUBG_R", "PUBG_R")
-mainPath<-file.path(Sys.getenv("R_USER"), "PUBG_R", "PUBG_R", "scripts")
+mainPath<-file.path(Sys.getenv("HOME"),"kaggle","PUBG_Rproject", "scripts")
 setwd(mainPath)#"~/kaggle/PUBG_R/PUBG_R/"
-
-if(!file.exists("data")){
-  dir.create("data")
-}
-
 dataDir<-file.path(getwd(), "data");
 
 # install external libraries
 library(dplyr);library(ggplot2);library(reshape2)
 library(gridExtra);library(caret);library(ModelMetrics)
-library(data.table)
+library(ggpubr)
+# library(data.table)
 # library(earth);library(rattle);library(partykit)# Convert rpart object to BinaryTree
-library(pROC)   #for ROC curves
-library(rpart);library(rpart.plot)
+# library(pROC)   #for ROC curves
+# library(rpart);library(rpart.plot)
 # library(multiROC)
 source("pubg_ml_functions.R")
 #######################################################################################
-############################### download data
-fileUrl<-"https://www.kaggle.com/c/10335/download-all"
-dataPath<-paste0(dataDir,"pubg-finish-placement-prediction.zip")
+############################### #### load data
+dataTrainSam<-read.csv(file.path(dataDir,"train_V2.csv"),stringsAsFactors =F,nrows=1000000)
+dataTrain<-read.csv(file.path(dataDir,"train_V2.csv"),stringsAsFactors =F, 
+                    col.names = names(dataTrainSam))
 
-if (!file.exists(dataPath)){
-  download.file(fileUrl,dataPath,method = "auto")
-  unzip(dataPath)
-  # conTrain<-unz(dataPath,filename = "train_V2.csv",open = "rt")
-  # dataTrain<-read.csv(conTrain)
-}
+# dataTrainSam<-read.table(file.path(dataDir,"train_V2.csv"),stringsAsFactors =F,nrows=10,sep = ",",header =T)
+# dataTrain<-read.table(file.path(dataDir,"train_V2.csv"),sep = ",",header =T,stringsAsFactors =F, 
+#                       col.names = names(dataTrainSam),colClasses = sapply(dataTrainSam,class))
 
-#### load data
-# dataTrainSam<-read.csv(file.path(dataDir,"train_V2.csv"),stringsAsFactors =F,nrows=10)
-# dataTrain<-read.csv(file.path(dataDir,"train_V2.csv"),stringsAsFactors =F, col.names = names(dataTrainSam))
-
-dataTrainSam<-read.table(file.path(dataDir,"train_V2.csv"),stringsAsFactors =F,nrows=10,sep = ",",header =T)
-dataTrain<-read.table(file.path(dataDir,"train_V2.csv"),sep = ",",header =T,stringsAsFactors =F, 
-                      col.names = names(dataTrainSam),colClasses = sapply(dataTrainSam,class))
-
+dataTrain<-dataTrainSam
 rm(dataTrainSam)
 
 # dataTestSam<-read.csv(paste0(dataDir,"test_V2.csv"),stringsAsFactors =F,nrows=10)
@@ -53,31 +40,40 @@ rm(dataTrainSam)
 
 dataOut<-read.csv(file.path(dataDir,"sample_submission_V2.csv"),stringsAsFactors =F)
 #only the winners 
-
+rm(dataOut)
 ################## METHOD SELECTION 1 #######################
 # use all variables to chose the best model
 
-dataTrainSam<- dataTrain %>% select(-rankPoints,-groupId,-matchId)
+dataTrainSam<- dataTrain %>% select(-rankPoints,-groupId,-matchId,-matchType)
 set.seed(1154)
 sampleIndices<-as.integer(runif(n=10000,min=0,max=nrow(dataTrain)))
 dataTrainSam<-dataTrainSam[sampleIndices,]
 
+# dataTrainSam<-dataTrainSam %>% mutate(target=winPlacePerc*100)
 target<-dataTrainSam$winPlacePerc
 methString<- c("lm","glm","rpart","bagEarth","rf") #,family="poisson"
 accMethods<-list()
-i<-4
+i<-2
 # for(i in methString){
-fit<-train(winPlacePerc ~ .-1 -Id -matchType, method=methString[i], data = dataTrainSam)
-summary(fit$finalModel)
-predictions<-predict(fit,newdata = dataTrainSam[, names(dataTrainSam)!="winPlacePerc"],interval="prediction")
+# fit<-train(winPlacePerc ~ .-1 -Id , method=methString[i],family="logistic", data = dataTrainSam)
+fit<-glm(winPlacePerc ~ .-1 -Id ,family = binomial("logit"), data = dataTrainSam)
+fit
+# summary(fit$finalModel)
+predictions<-predict(fit,newdata = dataTrainSam[, names(dataTrainSam)!="winPlacePerc"],
+                     interval="ci", type = "response")
+# p = predict(g, testData, type = "response")
 range(predictions)
 
-
+# plot(predictions)
 res<-data.frame(Id=dataTrainSam$Id,actual=dataTrainSam$winPlacePerc,predicted=predictions)
-res<-res %>% mutate(err=actual-predicted,err_label=label_error(err)) %>% select(Id,actual,predicted,err,err_label)
+res<-res %>% mutate(err=actual-predicted,err_label=label_error(err)) %>% 
+   select(Id,actual,predicted,err,err_label)
 # res1<-res[1:10,]
 # accuracy<-mse(res$actual,res$predicted);accuracy
+par(mfcol=c(2,3))
+plot(fit,which = c(1,2,3,4,5,6))
 
+mean(abs(res$err)) # for 10000 # 0.09591182  for 100000  #0.09587363 for 1000000
 # gg_pred<-ggplot(data=res)+geom_point(aes(x=Id,y=actual),color="blue")+geom_point(aes(x=Id,y=predicted),color="red");gg_pred
 gg_err<-ggplot(data=res)+geom_point(aes(x=Id,y=err,color=err_label))+
   ggtitle(paste(methString[i],": actual - predicted"))+xlab("Id player")+
@@ -515,15 +511,18 @@ lab=c("r0_10","r10_20","r20_30","r30_40","r40_50","r50_60","r60_70","r70_80","r8
 scores<-cut(dataTrain$winPlacePerc,breaks=cutpoints,labels =lab,right = F ) #[a,b)
 scores<-scores[!is.na(scores)] #<-"r0_10"
 
-dataPlayerS <- dataTrain[complete.cases(dataTrain), ] %>% mutate(score=scores) %>% 
+dataTarget <- dataTrain[complete.cases(dataTrain), ] %>% mutate(score=scores) %>% 
   select(Id, assists, boosts, damageDealt, DBNOs, headshotKills, heals, killPlace, killPoints, kills, killStreaks, 
          longestKill, matchDuration, maxPlace, revives, rideDistance, roadKills, swimDistance, teamKills, 
          vehicleDestroys, walkDistance, weaponsAcquired, winPoints,score)
 
-set.seed(856)
-sampleIndices<-as.integer(runif(n=11000,min=0,max=nrow(dataPlayerS)))
-dataTrain1<-dataPlayerS[sampleIndices,]
-table(dataTrain1$score)
+# write.csv(dataTarget,file = file.path("working_data","dataTarget.csv"))
+dataTarget<-read.csv(file = file.path("working_data","dataTarget.csv"))
+rm(dataTrain,scores,lab,cutpoints)
+# set.seed(856)
+# sampleIndices<-as.integer(runif(n=11000,min=0,max=nrow(dataPlayerS)))
+# dataTrain1<-dataPlayerS[sampleIndices,]
+# table(dataTrain1$score)
 # r0_10 r10_20 r20_30 r30_40 r40_50 r50_60 r60_70 r70_80 r80_90 r90_99   r100 
 # 1614   1222   1090   1061    952    977    913    983   1083    807    298 
 
@@ -534,11 +533,12 @@ set.seed(952)
 for (k in seq_along(lab)){
   dataTemp<-dataPlayerS[dataPlayerS$score==lab[k], ] # select all obs belonging to a class
   dataTrainSam<-rbind(dataTrainSam,dataTemp[runif(n=20000,min=0,max=nrow(dataTemp)), ])
-  
 }
+rm(dataTemp)
 table(dataTrainSam$score)
 # r0_10 r10_20 r20_30 r30_40 r40_50 r50_60 r60_70 r70_80 r80_90 r90_99   r100 
-# 10000   10000   10000   10000   10000   10000   10000   10000   10000   10000   10000 
+# 20000  20000  20000  20000  20000  20000  20000  20000  20000  20000  20000 
+rm(dataPlayerS)
 
 tree_ctrl <- trainControl(method = "cv", p=0.75, classProbs=T,seeds=set.seed(1117),number = 10,returnResamp = "all")
 tree_fit <- train(score ~ .-1 -Id, method="treebag", data = dataTrainSam,trControl =tree_ctrl,importance=TRUE ) # trControl = tree_ctrl 
@@ -673,8 +673,9 @@ format(object.size(fits),units = "GB") #"947.5 Mb"
 save(fits, file = "fits_220000obs_5vars.RData")
 
 #########################################  MODEL TEST #####################
-load("fits_250000obs_5vars.RData")
-load("fits_100000obs_5vars.RData")
+source(file.path("working_data","fits_220000obs_5vars.RData"))
+# load("fits_250000obs_5vars.RData")
+# load("fits_100000obs_5vars.RData")
 # fits<-
 
 cutpoints<-seq(from=0,to=1.1,by=0.1);
@@ -708,6 +709,7 @@ for (j in seq_len(20)){
 # 0.4325 0.4375 0.4339 0.4320 0.4368 0.4282 0.4278 0.4389 0.4153 0.4347
 # "fits_110000obs_5vars.RData" mean 0.46224
 # 0.4592 0.4603 0.4643 0.4597 0.4635 0.4549 0.4599 0.4651 0.4608 0.4774 0.4582 0.4605 0.4548 0.4558 0.4625 0.4553 0.4766 0.4630 0.4721 0.4609
+
 # predicted
 # actual   r0_10 r10_20 r20_30 r30_40 r40_50 r50_60 r60_70 r70_80 r80_90 r90_99 r100
 # r0_10   1148    241     45      8      5      1      4      3      0      0    4

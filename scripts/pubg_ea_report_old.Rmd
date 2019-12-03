@@ -7,36 +7,33 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE,cache = TRUE,warning = F)
 
+# mainPath<-file.path(Sys.getenv("R_USER"), "PUBG_Rproject", "scripts")
 mainPath<-file.path(Sys.getenv("HOME"),"kaggle","PUBG_Rproject", "scripts")
-setwd(mainPath)
+setwd(mainPath)#"~/kaggle/PUBG_R/PUBG_R/"
 
 dataDir<-file.path(getwd(), "data");
 
 # install external libraries
-library(dplyr);library(reshape2);
+library(dplyr);library(reshape2);#library(ggpubr)#library(gridExtra)
 library(ggpubr);library(ggplot2)
-
+# library(data.table)
 source("pubg_ml_functions.R")
 ```
 
 ### Synopsis
 
-PUBG is a successfull multiplayer online game set on an island where one hundred people play 
-a battle royal game. 
-Each player struggles in fights, hidings, escapes, pursuits, ambushes, stalkings and whatever 
-mean necessary in order to survive. 
+PUBG is a successfull multiplayer online game set on an island where one hundred people play a battle royal game. 
+Each player struggles in fights, hidings, escapes, pursuits, ambushes, stalkings and whatever mean necessary in order to survive. 
 Only the last player standing wins. Fight or escape? Hide or attack? Join forces or play alone?
 In order to decide the best strategy, a set of player stats have been collected and analyzed. 
 The final aim is to apply a predictive model that target the player ranking.
 
 ## Data Set
 
-PUBG is organized in matches. In each match, up to 100 people partecipate as singles or teams. 
-At the end of the match, players (singles or groups) are ranked based on how many other groups 
-are still alive when they are eliminated.
-During the match, players can find objects such as weapons, vehicles, and medical kits they 
-can use to kill and injure other players (including team members), to drive away from dangerous 
-areas or go right in to the middle of it.
+PUBG is organized in matches. In each match, up to 100 people partecipate as singles or teams. At the end of the match, 
+players (singles or groups) are ranked based on how many other groups are still alive when they are eliminated.
+During the match, players can find objects such as weapons, vehicles, and medical kits they can use to kill and injure 
+other players (including team members), to drive away from the dangerous areas or go right in to the middle of it.
 
 ```{r load data}
 dataTrainSam<-read.csv(file.path(dataDir,"train_V2.csv"),stringsAsFactors =F,nrows=10)
@@ -54,37 +51,36 @@ rm(dataTrain)
 ```
 
 The data set, available [here](https://www.kaggle.com/c/pubg-finish-placement-prediction/data), 
-consists of `r dimData[2]` statistics collected for `r dimData[1]` players. The statistics are:
+consists of `r dimData[2]` statistics collected for `r dimData[1]` players weighting
+`r sizeData`. The statistics are:
 
 1. **Id**: player’s Id
-2. **assists**: number of enemy that this player damaged and were killed by teammates
+2. **assists**: number of enemy this player damaged that were killed by teammates
 3. **boosts**: number of boost items used
 4. **heals**: number of healing items used
 5. **revives**: number of times this player revived teammates
 6. **damageDealt**: total damage dealt. Note: Self inflicted damage is subtracted
 7. **DBNOs**: number of enemy knocked
-8. **killPlace**: ranking in match for number of enemy killed
-9. **killPoints**: kills-based external ranking of player ["0" should be treated as 
-a “None” for *rankPoints* equal to -1]
+8. **killPlace**: ranking in match of number of enemy killed
+9. **killPoints**: kills-based external ranking of player ["0" should be treated as a “None” 
+for *rankPoints* equal to -1]
 10. **killStreaks**: max number of enemy killed in a short amount of time
 11. **kills**: number of enemy killed
 12. **headshotKills**: number of enemy killed with headshots
 13. **roadKills**: number of kills while in a vehicle
 14. **teamKills**: number of times this player killed a teammate
-15. **longestKill**: longest distance between this player and a player killed at time of death
+15. **longestKill**: longest distance between player and player killed at time of death
 16. **rideDistance**: total distance traveled in vehicles measured in meters
 17. **swimDistance**: total distance traveled by swimming measured in meters
 18. **vehicleDestroys**: number of vehicles destroyed
 19. **walkDistance**: total distance traveled on foot measured in meters
 20. **weaponsAcquired**: number of weapons picked up
-21. **winPoints**: win-based external ranking for player ["0" should be treated as 
-a “None” for *rankPoints* equal to -1]
+21. **winPoints**: win-based external ranking of playe ["0" should be treated as a “None” for
+*rankPoints* equal to -1]
 22. **winPlacePerc**: percentile winning placement, where 1 corresponds to 1st place. 
 It is calculated off of *maxPlace* [TARGET]
-23. **rankPoints**: Elo-like ranking of player, inconsistent and is being deprecated in 
-the API’s next version
-24. **groupId**: ID group within a match. In different matches the same group of players will 
-have a different IDs
+23. **rankPoints**: Elo-like ranking of player, inconsistent and is being deprecated in the API’s next version
+24. **groupId**: ID group within a match. In different matches the same group of players will have a different IDs
 25. **matchDuration**: duration of match in seconds
 26. **matchId**: ID to identify match
 27. **matchType**: game mode such as: “solo”, “duo”, “squad”, “solo-fpp”, “duo-fpp”, “squad-fpp”, 
@@ -98,6 +94,7 @@ players features are shown.
 ## Summary statistics
 
 ### Match statistics
+
 
 ``` {r data_match}
 dataMatch<-read.csv(file=file.path("working_data","dataMatch.csv"))
@@ -113,12 +110,10 @@ summMatch<-dataMatch %>% summarise(AVduration=mean(duration),SDduration=sd(durat
 
 Data contains statistics of `r nrow(dataMatch)` matches. For each match it is reported: 
 the type [`r length(unique(dataMatch$type))` types], the duration, the number of partecipating players, 
-the number of partecipating groups, the worst placement ranked in the match, and the number 
-of winners in the match.  
-Although the match number is not even amongs types, as shown in the table below, note that for 
-each match type there is a high variability in the statistic distributions [see Figure 1], and 
-overall they have a comparable distribution. For this reason the match type is disregarded in the 
-next analysis.
+the number of partecipating groups, 
+the worst placement ranked in the match, and the number of winners in the match.  
+Although the match number is not even amongs types, as shown in the table below, notice that there is a 
+high variability in the statistic distributions for each match type [see Figure 1]. For this reason the match type is disregarded in the next analysis.
 
 ```{r n_types,tidy=T}
  NMtype<-table(dataMatch$type)
@@ -142,19 +137,19 @@ annotate_figure(fig1, top = "Match statistics", fig.lab = "Figure 1", fig.lab.po
 rm(fig1)
 ```
 
-On average, a match lasts `r format(summMatch$AVduration,digits=4)` +/- `r format(summMatch$SDduration,digits=3)` s
-[~`r format(summMatch$AVduration/60,digits=2)`  +/- `r format(summMatch$SDduration/60,digits=1)` min]
+On average, a match lasts `r format(summMatch$AVduration,digits=4)` +/- `r format(summMatch$SDduration,digits=4)` s
+[~`r format(summMatch$AVduration/60,digits=2)`  +/- `r format(summMatch$SDduration/60,digits=2)` min]
 and has `r format(summMatch$AVnPlayers,digits=2)` +/- `r format(summMatch$SDnPlayers,digits=2)` players divided in 
-`r format(summMatch$AVnGroups,digits=2)` +/- `r format(summMatch$SDnGroups,digits=2)` groups. 
+`r format(summMatch$AVnGroups,digits=4)` +/- `r format(summMatch$SDnGroups,digits=4)` groups. 
 At the end of the match, on average, the worst placement is `r format(summMatch$AVmaxPlace,digits=1)` +/- 
 `r format(summMatch$SDmaxPlace,digits=1)` and the number of winners is `r format(summMatch$AVnWinners,digits=1)` +/-
 `r format(summMatch$SDnWinners,digits=1)`. 
 
 ### Personal statistics
 
-For a better visualization, the over 4 milions players have been divided into 4 classes depending 
+For a better visualization, the over 4 milions players have been divided into 4 groups depending 
 on their placement at the end on the match, i.e. the **winPlacePerc** spanning between 0 and 1. 
-Classes represent winning, good, medium, and poor performances rather than an uniform partition of the players. Winning players score 1 and are labeled as "top"; players scoring between 0.9 and 0.99 are 
+Groups represent winning, good, medium, and poor performances rather than an uniform partition of the players. Winning players score 1 and are labeled as "top"; players scoring between 0.9 and 0.99 are 
 labeled as "head", while scores between 0.2 and 0.9 (excluded) are labeld as "heart" and 
 scores between 0 and 0.2 (excluded) are labeld as "tail" (see table below).
 
@@ -169,7 +164,7 @@ print(dfScore)
 ```
 
 For each class, the value distribution of the player statistics has been compared.
-The "top" class spans a larger range in almost every statistic, especially in 
+The "top" class span a larger range in almost every statistic, especially in 
 **weaponsAcquired**,**damageDealt**,,**walkDistance**,**killPoints**,**longestKill**, 
 **winPoints** as shown in Figure 2 and Figure 3.
 
@@ -195,7 +190,7 @@ rm(fig3)
 
 Now, let's see the pair-wise correlation between statistics, divided per class, i.e 
 their mutual interaction.
-Figure 4 shows that in all classes there is an high correlation (~0.9) between 
+Figure 3 shows that in all classes there is an high correlation (~0.9) between 
  **winPoints** and **killPoints**. This fact is not surprising since the two statistics 
  are calculated using an external ranking (**rankPoints**). 
 As expected, the number of knocked enemies, **DBNOs**, and the dameges dealt, **damageDealt**, 
@@ -219,6 +214,76 @@ rm(fig8)
 
 ```
 
+#### T-tests
+
+```{r ttest_top}
+dataPlayerS<-read.csv(file=file.path("working_data","dataPlayerS.csv"),
+                      stringsAsFactors = F)
+playerVariables<-c("assists","boosts","heals","revives",
+                   "headshotKills","killPlace","killPoints","kills",
+                   "teamKills","killStreaks","longestKill", "roadKills",
+                   "rideDistance","swimDistance","walkDistance",
+                   "vehicleDestroys" ,"weaponsAcquired","damageDealt","DBNOs",
+                   "winPoints") #"maxPlace", is reltive to the match not the ,"winPlacePerc"
+signPval<-0.05
+score_labels<-c("head","heart","tail")
+# # tag_pos<-c("top","top","bottom","bottom")
+players_top<-dataPlayerS[dataPlayerS$score=="top",]
+# ttest_top<-list()
+# 
+# for(i in seq_along(score_labels)){
+#    players_x<-dataPlayerS[dataPlayerS$score==score_labels[i],]
+#    set.seed(1032+i)
+#    randomSel<-runif(nrow(players_top),min=0,max=nrow(players_x))
+# 
+#    ttest_top[[i]]<-sapply(1:length(playerVariables),function(j){
+#       res<-t.test(players_top[,playerVariables[j]],
+#                   players_x[randomSel,playerVariables[j]],alternative="greater");
+#       return(c(res$statistic,res$p.value))
+#    })
+# }
+# 
+# rm(dataPlayerS)
+# # Create table top -other scores pvalues
+# pvalVar<-data.frame(variable=rep(playerVariables,times=3),
+#                     score=rep(c("top-head","top-heart","top-tail"),each=length(playerVariables)),
+#                     tstat=c(ttest_top[[1]][1,],ttest_top[[2]][1,],ttest_top[[3]][1,]),
+#                     pvalues=c(ttest_top[[1]][2,],ttest_top[[2]][2,],ttest_top[[3]][2,]))
+# 
+pvalVar<-read.csv(file=file.path("working_data","pvalVariables_4classes.csv"))
+pvalVar<-pvalVar %>% mutate(significant=ifelse(pvalues<signPval,"*","."))
+# 
+# rm(ttest_top)
+```
+
+But how much are these values different? In order to answer this question, t-tests between 
+the statistics divided per class have been calculated. In practice, for each statistic, the "top" 
+class values are compared with the values of each other class. For a balanced comparison, 
+each class has been randmly sampled to have an equal number of players. The difference in the 
+average values are shown in Figure 4. The significantly different values (p-value< `r signPval`) 
+are marked with a "*". 
+
+```{r ttest_top_plot,fig.height=7,fig.width=10}
+g_pval<-ggplot(pvalVar,aes(x=variable,y=tstat,group=score))+
+   geom_line(aes(x=variable,y=tstat,color=score),size=1,linejoin="round")+
+   theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+   ylab("difference in average")+  xlab("")+
+   geom_point(aes(shape=significant,color=score),size=2.5)+scale_shape_manual(values=c(16,8))
+# print(g_pval)
+annotate_figure(g_pval, top = "T-tests", fig.lab = "Figure 5", fig.lab.pos = "bottom")
+
+```
+
+
+The statistics **assists**,**boosts**, **damageDealt**, **DBNOs**, **headshotKills**, **kills**, **killStreaks**, **longestKill**, **revives**, **roadKills**, **rideDistance**,  **vehicleDestroys**, 
+and **weaponsAcquired** are significantly different among all class pairs, 
+while in all cases  **winPoints** is non-significant. **killPlace** ?
+Note that this last statistic is based on the user experience gained in all matches 
+previously played. This comparison shows that the result of a single match is not 
+representative of the player overall achievements.
+Not surprisingly, the other statistics are significantly different for the "top"-"tail" class pair.
+The p-values for the "top"-"head" are generally higher than the ones for the "top"-"heart" class, 
+meaning that the averages values are closer for the "top"-"head" class.
 
 ### Predictive analysis
 
@@ -243,10 +308,10 @@ Each class spans an interval 0.1 long: the first ranges from 0.00 (included) to 
 The last two calsses are slightly different: one covers 0.90 to 0.99 (both included), 
 and the last class is reserved to the winners, i.e. with a score of 1. 
 One hundred thousands players have been randomly selected from each class to create 
-a balanced training data set of a total of 1.1 milion observations.
-Figure 5 shows the distributions of each class for the whole data set.
+a balanced training data set of a total of 1100000 observations.
+Figure 6 shows the distributions of each class for the whole data set.
 
-```{r target_label_plot,fig.height=4,fig.width=10}
+```{r target_label_plot,fig.height=5,fig.width=10}
 lab=c("r0_10","r10_20","r20_30","r30_40","r40_50","r50_60","r60_70",
       "r70_80","r80_90","r90_99","r100")
 target_labels<-read.csv(file=file.path("working_data","target_labels.csv"))
@@ -255,7 +320,7 @@ targHist<-ggplot(data = target_labels, aes(score,fill=..count..))+
    geom_histogram(stat="count")+coord_flip()
 # + geom_text(aes(y = score, label = ..count..))#stat="count"
 annotate_figure(targHist, top = "Target class distributions",
-                fig.lab = "Figure 5", fig.lab.pos = "bottom")
+                fig.lab = "Figure 6", fig.lab.pos = "bottom")
 # table(dataTarget$score)
 rm(targHist,target_labels)
 
@@ -263,31 +328,12 @@ rm(targHist,target_labels)
 
 ## Predictive model
 
-A logistic Generalized Linear Model (GLM) has been chosen as predictive model to achive a 
-compromise beteween computational effort and accuracy. 
-Briefly, a logistic approach treats the target variable as a binomial random variable that, 
-in practice, has the same behaviour of the statistic **winPlacePerc**, being "1" the 
-success and "0" the failure. The logistic model calcualates the probability that an observation 
+A logistic generalized linear model has been chosen as predictive model to achive a 
+compromise beteween the computational effort and the accuracy. 
+Briefly, a logistic approach treats the target variable as a binomial random variable that 
+in practice has the same behaviour of the statistic **winPlacePerc**, being the value 1 the 
+success and 0 the failure. The logistic model calcualates the probability that an observation 
 is successfull, in this case the player's placement percentage at the end of the match.
-
-```{r glm_coeff,fig.height=5,fig.width=10}
-load(file = file.path("working_data","GLM_logistic_coeff.Rdata"))
-
-annotate_figure(pCoef, top = "logistic GLM coefficients",
-                fig.lab = "Figure 6", fig.lab.pos = "bottom")
-
-rm(pCoef)
-```
-
-A subset of low correlated features (corr<|0.5|) has been chosen to build the 
-GLM prediction model (**DBNOs**, **kills**, and **killStreak** have been discarded). 
-Categorical features, i.e. the id of the player, the match, and the group, have been also discarded because not relevant to the prediction. 
-Figure 6 shows how much each feature impacts on a unit change of the final placement (y-axis). The size of each coefficient indicates the degree of uncertainty, i.e. the amplitude of the confidence interval. For example, **assists** have the highest positive effect (~0.2) 
-per unit change in the final placement with medium uncertainty, while **teamKills** 
-have a negative influence (-0.1) with higher uncertainty. 
-On the contrary, **swimDistance** and **rideDistance** have no influence at all with 
-a very low degree of uncertainty.
-
 
 ```{r glm_model,fig.height=5,fig.width=10}
 # par(mfcol=c(2,3))
@@ -298,7 +344,7 @@ load(file = file.path("working_data","GLM_logistic_diagnostic.Rdata"))
 #    geom_point(alpha=0.5,color="grey")+ylim(c(-5,5))+
 #    geom_hline(yintercept = 0,color="black")+
 #    geom_hline(yintercept = mean(residFit$residuals),color="red")
-annotate_figure(residP, top = "logistic GLM diagnostic",
+annotate_figure(residP, top = "GLM logistic diagnostic",
                 fig.lab = "Figure 7", fig.lab.pos = "bottom")
 
 meanRes<-mean(residP$data$residuals)
@@ -312,7 +358,7 @@ rm(residP)
 ```
 
 Figure 7 shows the diagnostic of the model, that is how much each predicted (fitted) 
-value is far from the theoretical model (this distance is called *residual*). The red 
+value is far from the theoretical model (this distance is called residual). The red 
 line represents the mean of the residuals, which is `r format(meanRes,digits=2)`.
 Even if the problem is not strictly linear, the concentration of the residuals 
 near zero shows that the model achieves reasonable results.
@@ -342,14 +388,14 @@ gg_err<-ggplot(data=res)+ylab("% of majority")+
 # 
 # rm(gg_err)
 
-majority<- sum(abs(res$err) < median(abs(res$err)))/nrow(res)
+majority<- sum(res$err[abs(res$err) < median(abs(res$err))])/nrow(res)
 ```
 
 The in-sample error of the model, i.e. the error calculated on the training data set, 
 is on average `r format(mean(abs(res$err)),digits=2)` +/- `r format(sd(abs(res$err)),digits=2)`.
-The left panel in Figure 8 shows the error counts (expressed as a percentage of the maximum for
-a better visualization): `r format(majority*100,digits=2)`% of the errors are under the mean 
-(blue line).
+The left panel in Figure 7 shows the error counts (expressed as a percentage of the maximum for
+a better visualization): the `r format(majority*100,digits=3)` of the errors are under the median 
+that is `r format(median(abs(res$err)),digits=2)`.
 
 
 ```{r out_sample_err,fig.height=5,fig.width=10}
@@ -365,16 +411,13 @@ figErr<-ggarrange(gg_err,gg_errOut,nrow=1,ncol=2)
 annotate_figure(figErr, top = "In&Out-sample errors",
                 fig.lab = "Figure 8", fig.lab.pos = "bottom")
 
-# majority<- sum(resOut$err[abs(resOut$err) < median(abs(resOut$err))])/nrow(resOut)
-majority<- sum(abs(resOut$err) < median(abs(resOut$err)))/nrow(resOut)
-
 ```
 
 The out-sample error, i.e. the error calculated on data not used in the model, is calculated 
 on 50 subsamples each 10 thousands strong. The overall average error is similar to the 
-in-sample error, in fact it's `r format(mean(abs(resOut$err)),digits=2)` +/- `r format(sd(abs(resOut$err)),digits=2)`. The error counts are shown in 
-the rigth panel of Figure 8: `r format(majority*100,digits=2)`% of the errors are under 
-the mean (blue line).
+in-sample error, in fact it's `r format(mean(abs(resOut$err)),digits=2)` with a very small 
+standard deviation `r format(sd(abs(resOut$err)),digits=2)`. The error counts are shown in 
+the rigth panel of Figure 7.
 
 
 #### Test data set
@@ -385,4 +428,4 @@ the mean (blue line).
 ```
 
 Finally, the test data set has almost 2 millions obseravations. The mean error, 
-calculated by Kaggle is 0.10072 [link](https://www.kaggle.com/chiara87todaro/kernel5e616a4796).
+as calculated by Kaggle is 0.10072.

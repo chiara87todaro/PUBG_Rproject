@@ -1,6 +1,7 @@
 # KAGGLE projects
 # PUBG
 
+
 rm(list = ls())
 
 mainPath<-file.path(Sys.getenv("HOME"),"kaggle","PUBG_Rproject", "scripts")
@@ -235,19 +236,22 @@ table(scores)
 # 1107105 2870630  341658  127573 
 
 dataSample<-dataTrain#[1:100,]
-dataPlayerS<-dataSample %>% 
-  # select(Id,matchId,headshotKills,killStreaks,roadKills,longestKill,killPlace,killPoints,kills,teamKills) %>%
-  mutate(DBNOs=DBNOs,damageDealt=damageDealt,weaponsAcquired=weaponsAcquired,vehicleDestroys=vehicleDestroys,
-         killPoints=killPoints,killPlace=killPlace,longestKill=longestKill,
-         totKills=headshotKills+killStreaks+roadKills+kills+teamKills,
-         totDistance=swimDistance+walkDistance+rideDistance,
-         heals=heals,revives=revives,assists=assists,boosts=boosts,
-         winPoints=winPoints,score=scores) %>% 
-  select(Id,groupId,DBNOs,damageDealt,weaponsAcquired,killPoints,killPlace,longestKill,
-         totKills,totDistance,
-         vehicleDestroys,
-         heals,revives,assists,boosts,winPoints,score)
-
+# dataPlayerS<-dataSample %>% 
+#   # select(Id,matchId,headshotKills,killStreaks,roadKills,longestKill,killPlace,killPoints,kills,teamKills) %>%
+#   mutate(DBNOs=DBNOs,damageDealt=damageDealt,weaponsAcquired=weaponsAcquired,vehicleDestroys=vehicleDestroys,
+#          killPoints=killPoints,killPlace=killPlace,longestKill=longestKill,
+#          totKills=headshotKills+killStreaks+roadKills+kills+teamKills,
+#          totDistance=swimDistance+walkDistance+rideDistance,
+#          heals=heals,revives=revives,assists=assists,boosts=boosts,
+#          winPoints=winPoints,score=scores) %>% 
+#   select(Id,groupId,DBNOs,damageDealt,weaponsAcquired,killPoints,killPlace,longestKill,
+#          totKills,totDistance,
+#          vehicleDestroys,
+#          heals,revives,assists,boosts,winPoints,score)
+# 
+# 
+# dataPlayerS<-dataPlayerS[complete.cases(dataPlayerS),]
+# sum(is.na(dataPlayerS))
 
 write.csv(dataPlayerS,file=file.path("working_data","dataPlayerS.csv"))
 
